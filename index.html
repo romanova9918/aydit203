@@ -1,62 +1,198 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-   <title>Проверка досок</title>
-   <style>
-	body {
-	   font-family: Arial,sans-serif;
-	   margin: 0;
-	   padding; 20px;
-	   display: flex;
-	   flex-wrap: wrap;
-	   gap: 20px;
-	}
-	.history-block {
-	   flex: 1;
-	   min-width: 300px;
-	   padding: 15px;
-	   border-radius: 8px;
-	}
-	.form-block {
-	   flex: 1;
-	   min-width: 300px;
-	   padding: 15px;
-	   border-radius: 8px;
-	}
-	h2 {
-	   text-align:center;
-	}
-	.btn {
-	   background: #0f4dbc;
-	   color: white;
-	   padding: 10px 15px;
-	   border: none;
-	   border-radius: 4px;
-	   cursor: pointer;
-	   margin-bottom: 15px;
-	   
-	}
-	iframe{
-	   width: 100%;
-	   height: 500px;
-	   border:none;
-	   border-radius: 8px;
-	}
-   </style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Аудит доски цеха</title>
+  <style>
+    :root {
+      --bg: #faf9f7;
+      --ink: #1f2328;
+      --muted: #6b7280;
+      --brand: #0ea5e9;
+      --brand-ink: #0b5da6;
+      --card: #ffffff;
+      --ring: rgba(14,165,233,0.35);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0b0f14;
+        --ink: #eef2f7;
+        --muted: #9aa6b2;
+        --brand: #38bdf8;
+        --brand-ink: #7dd3fc;
+        --card: #0f1520;
+        --ring: rgba(56,189,248,0.3);
+      }
+    }
+    html, body { height: 100%; }
+    body {
+      margin: 0; background: var(--bg); color: var(--ink);
+      font: 16px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, "Helvetica Neue", Arial, "Apple Color Emoji","Segoe UI Emoji";
+    }
+    .wrap { max-width: 960px; margin: 0 auto; padding: 16px; }
+    header { display: grid; gap: 8px; padding: 16px; background: var(--card); border-radius: 18px; box-shadow: 0 1px 0 rgba(0,0,0,.06), 0 12px 32px rgba(0,0,0,.06); }
+    .title { display:flex; align-items: center; gap: 10px; font-weight: 700; font-size: 22px; }
+    .badge { font: 600 12px/1.2 system-ui; color: var(--brand-ink); background: rgba(14,165,233,.12); padding: 6px 10px; border-radius: 999px; }
+    .muted { color: var(--muted); font-size: 14px; }
+
+    .tabs { margin-top: 14px; display:flex; gap: 8px; flex-wrap: wrap; }
+    .tab-btn {
+      appearance: none; border: 1px solid rgba(0,0,0,.06); background: var(--card); color: var(--ink);
+      padding: 10px 14px; border-radius: 12px; font-weight: 600; cursor: pointer;
+      box-shadow: 0 1px 0 rgba(0,0,0,.04);
+    }
+    .tab-btn[aria-selected="true"], .tab-btn:focus-visible {
+      outline: none; border-color: var(--brand); box-shadow: 0 0 0 4px var(--ring);
+    }
+    .grid { display: grid; gap: 14px; margin-top: 16px; }
+    .card { background: var(--card); border-radius: 18px; padding: 0; overflow: hidden; box-shadow: 0 1px 0 rgba(0,0,0,.06), 0 12px 32px rgba(0,0,0,.06); }
+
+    .toolbar { display:flex; gap: 10px; align-items:center; padding: 10px; border-bottom: 1px solid rgba(0,0,0,.07); }
+    .toolbar .right { margin-left:auto; display:flex; gap:8px; }
+    .btn { appearance: none; border: none; padding: 10px 12px; border-radius: 10px; cursor: pointer; font-weight: 600; }
+    .btn.primary { background: var(--brand); color: white; }
+    .btn.ghost { background: transparent; border: 1px solid rgba(0,0,0,.08); color: var(--ink); }
+    .btn:active { transform: translateY(1px); }
+
+    iframe { width: 100%; height: 72vh; border: none; display: block; background: #fff; }
+    .hint { padding: 16px; }
+    .hint code { background: rgba(0,0,0,.06); padding: 2px 6px; border-radius: 6px; }
+
+    footer { color: var(--muted); font-size: 12px; text-align:center; padding: 18px 0 32px; }
+  </style>
 </head>
 <body>
+  <div class="wrap">
+    <header>
+      <div class="title">🧭 Аудит доски цеха <span id="shopBadge" class="badge" hidden></span></div>
+      <div class="muted">Сканируйте QR-код → проведите аудит через форму → смотрите историю проверок.
+        <span id="who"></span>
+      </div>
+      <div class="tabs" role="tablist" aria-label="Навигация">
+        <button class="tab-btn" id="tab-audit" role="tab" aria-selected="true" aria-controls="panel-audit">📝 Провести аудит</button>
+        <button class="tab-btn" id="tab-history" role="tab" aria-selected="false" aria-controls="panel-history">📊 История аудитов</button>
+      </div>
+    </header>
 
-	<div class= "history-block">
-	   <h2>История проверок</h2>
-	   <a href="https://wiki.yandex.ru/users/romanova-svr99/b1423768115a/" class="btn" target="_blank">История проверок</a>
-	   <p>Нажмите кнопку, чтобы посмотреть все прошлые проверки</p>
-	</div>
-	
+    <section class="grid">
+      <!-- AUDIT CARD -->
+      <div id="panel-audit" class="card" role="tabpanel" aria-labelledby="tab-audit">
+        <div class="toolbar">
+          <strong>Форма аудита</strong>
+          <div class="right">
+            <button class="btn ghost" id="openForm">Открыть в новой вкладке ↗</button>
+            <button class="btn primary" id="copyLink">Скопировать ссылку</button>
+          </div>
+        </div>
+        <div id="auditWrap">
+          <iframe id="auditFrame" title="Форма аудита (Яндекс Формы)"></iframe>
+          <div id="auditHint" class="hint" hidden>
+            <p>Добавьте параметры в ссылку, например:<br>
+              <code>?form=https%3A%2F%2Fforms.yandex.ru%2Fu%2FXXXX%2F&history=https%3A%2F%2Fdatalens.yandex%2FYYYY&_autoupdate=60&shop=Цех+5</code>
+            </p>
+          </div>
+        </div>
+      </div>
 
+      <!-- HISTORY CARD -->
+      <div id="panel-history" class="card" role="tabpanel" aria-labelledby="tab-history" hidden>
+        <div class="toolbar">
+          <strong>История аудитов</strong>
+          <div class="right">
+            <button class="btn ghost" id="openHistory">Открыть в новой вкладке ↗</button>
+          </div>
+        </div>
+        <div id="historyWrap">
+          <iframe id="historyFrame" title="Динамическая таблица (DataLens/Таблицы)"></iframe>
+          <div id="historyHint" class="hint" hidden>
+            <p>Задайте параметр <code>history</code> — публичную ссылку на DataLens (или опубликованную таблицу), например:<br>
+              <code>history=https%3A%2F%2Fdatalens.yandex%2Fabcd1234%3F_embedded%3D1%26_no_controls%3D1</code></p>
+          </div>
+        </div>
+      </div>
+    </section>
 
-	<div class= "form-block">
-	   <h2>Новая проверка</h2>
-	   <iframe src="https://forms.yandex.ru/cloud/68187ef45056902f24036f3b"></iframe>
-	</div>	
+    <footer>Версия: 1.0 • Этот экран можно распечатать или закрепить QR-кодом на доске</footer>
+  </div>
+
+  <script>
+    const qs = new URLSearchParams(location.search);
+    const formUrl = qs.get('form');          // публичная ссылка на Яндекс Форму
+    const historyUrl = qs.get('history');    // публичная ссылка на DataLens/таблицу
+    const shop = qs.get('shop');             // имя цеха (будет передано в форму)
+    const formHiddenParam = qs.get('form_field') || 'shop'; // идентификатор скрытого вопроса в форме
+    const autoupdate = qs.get('_autoupdate') || '60';       // автообновление DataLens (сек)
+
+    // Header badges
+    const badge = document.getElementById('shopBadge');
+    if (shop) { badge.textContent = shop; badge.hidden = false; }
+
+    // Tabs logic
+    const tabAudit = document.getElementById('tab-audit');
+    const tabHistory = document.getElementById('tab-history');
+    const panelAudit = document.getElementById('panel-audit');
+    const panelHistory = document.getElementById('panel-history');
+    function selectTab(which) {
+      const auditSelected = which === 'audit';
+      tabAudit.setAttribute('aria-selected', auditSelected);
+      tabHistory.setAttribute('aria-selected', !auditSelected);
+      panelAudit.hidden = !auditSelected;
+      panelHistory.hidden = auditSelected;
+    }
+    tabAudit.addEventListener('click', () => selectTab('audit'));
+    tabHistory.addEventListener('click', () => selectTab('history'));
+
+    // Build safe URLs
+    function appendParam(url, key, value) {
+      if (!url || !key || value==null) return url;
+      const u = new URL(url);
+      u.searchParams.append(key, value);
+      return u.toString();
+    }
+    function ensureDatalensParams(url) {
+      if (!url) return url;
+      const u = new URL(url);
+      if (!u.searchParams.has('_embedded')) u.searchParams.set('_embedded','1');
+      if (!u.searchParams.has('_no_controls')) u.searchParams.set('_no_controls','1');
+      if (!u.searchParams.has('_autoupdate') && autoupdate) u.searchParams.set('_autoupdate', autoupdate);
+      return u.toString();
+    }
+
+    // Init iframes
+    const auditFrame = document.getElementById('auditFrame');
+    const auditHint = document.getElementById('auditHint');
+    const openFormBtn = document.getElementById('openForm');
+    const copyLinkBtn = document.getElementById('copyLink');
+
+    if (formUrl) {
+      const src = shop ? appendParam(formUrl, formHiddenParam, shop) : formUrl;
+      auditFrame.src = src;
+      openFormBtn.onclick = () => window.open(src, '_blank');
+      copyLinkBtn.onclick = async () => {
+        try { await navigator.clipboard.writeText(src); copyLinkBtn.textContent = 'Ссылка скопирована!'; setTimeout(()=>copyLinkBtn.textContent='Скопировать ссылку',1500);} catch(e){ alert('Не удалось скопировать ссылку'); }
+      };
+    } else {
+      auditFrame.style.display='none';
+      auditHint.hidden = false;
+      openFormBtn.disabled = true; copyLinkBtn.disabled = true;
+    }
+
+    const historyFrame = document.getElementById('historyFrame');
+    const historyHint = document.getElementById('historyHint');
+    const openHistoryBtn = document.getElementById('openHistory');
+    if (historyUrl) {
+      const src = ensureDatalensParams(historyUrl);
+      historyFrame.src = src;
+      openHistoryBtn.onclick = () => window.open(src, '_blank');
+    } else {
+      historyFrame.style.display='none';
+      historyHint.hidden = false;
+      openHistoryBtn.disabled = true;
+    }
+
+    // Deep link to tab via #hash
+    if (location.hash === '#history') selectTab('history');
+  </script>
 </body>
-</html>	
+</html>
